@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Shape Designer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="designer-container">
+        <div id="canvasContainer">
+            <canvas id="glCanvas"></canvas>
+        </div>
+        <div id="controlsContainer">
+            <div id="layerPanel">
+                <h3>Layers</h3>
+                <div id="layerList"></div>
+                <button id="addLayer">Add Layer</button>
+                <button id="deleteLayer">Delete Layer</button>
+            </div>
+            <div id="vertexEditor">
+                <h3>Vertex Editor</h3>
+                <div>
+                    <label for="vertexX">X:</label>
+                    <input type="number" id="vertexX" min="-1" max="1" step="0.01">
+                </div>
+                <div>
+                    <label for="vertexY">Y:</label>
+                    <input type="number" id="vertexY" min="-1" max="1" step="0.01">
+                </div>
+                <div>
+                    <label for="vertexR">R:</label>
+                    <input type="number" id="vertexR" min="0" max="1" step="0.01">
+                </div>
+                <div>
+                    <label for="vertexG">G:</label>
+                    <input type="number" id="vertexG" min="0" max="1" step="0.01">
+                </div>
+                <div>
+                    <label for="vertexB">B:</label>
+                    <input type="number" id="vertexB" min="0" max="1" step="0.01">
+                </div>
+                <button id="deleteVertex">Delete Vertex</button>
+            </div>
+            <div id="shapeControls">
+                <select id="drawMode">
+                    <option value="POINTS">Points</option>
+                    <option value="LINES">Lines</option>
+                    <option value="LINE_STRIP">Line Strip</option>
+                    <option value="LINE_LOOP">Line Loop</option>
+                    <option value="TRIANGLES">Triangles</option>
+                    <option value="TRIANGLE_STRIP">Triangle Strip</option>
+                    <option value="TRIANGLE_FAN">Triangle Fan</option>
+                </select>
+                <input type="color" id="colorPicker" value="#999999">
+                <button id="setColor">Set Color</button>
+                <button id="clearLayer">Clear Layer</button>
+            </div>
+            <div id="export">
+                <input type="text" id="modelName" placeholder="Enter model name">
+                <button id="exportButton">Export Model</button>
+            </div>
+        </div>
+    </div>
+    <script src="webgl-utils.js"></script>
+    <script src="shape-designer.js"></script>
+</body>
+</html>
