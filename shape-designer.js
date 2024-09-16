@@ -8,6 +8,7 @@ let selectedVertex = -1;
 let snapToGrid = false;
 let gridSize = 0.1;
 let backgroundColor = [0, 0, 0];
+let previewMode = false; //TODO: Implement preview mode?
 
 const SELECTION_SENSITIVITY = 0.04;
 
@@ -73,6 +74,7 @@ function draw() {
     drawLayers();
     drawVertexIndicator();
     drawSelectedLayerBoundingBox();
+
 }
 
 function drawLayers() {
@@ -91,9 +93,11 @@ function drawLayers() {
             gl.vertexAttribPointer(colorAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
             gl.drawArrays(gl[layer.drawMode], 0, layer.vertices.length / 3);
-            gl.drawArrays(gl.POINTS, 0, layer.vertices.length / 3);
 
-            if (index === currentLayerIndex) {
+
+
+            if (!previewMode && index === currentLayerIndex) {
+                gl.drawArrays(gl.POINTS, 0, layer.vertices.length / 3);
                 gl.lineWidth(2);
                 gl.drawArrays(gl.LINE_LOOP, 0, layer.vertices.length / 3);
             }
@@ -102,7 +106,7 @@ function drawLayers() {
 }
 
 function drawGridLines() {
-    if (!snapToGrid) return;
+    if (!snapToGrid || previewMode) return;
 
     let lineVertices = [];
     let lineColors = [];
