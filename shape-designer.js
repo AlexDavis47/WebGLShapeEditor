@@ -606,6 +606,13 @@ window.onload = function() {
     deleteLayerButton.addEventListener('click', deleteLayer);
     deleteVertexButton.addEventListener('click', deleteVertex);
 
+    setColorButton.addEventListener('click', function() { //TODO: Improve this
+    if (selectedVertex !== -1 && currentLayerIndex !== -1) {
+        setVertexColor(selectedVertex);
+        draw();
+    }
+});
+
     addLayerButton.addEventListener('click', addLayer);
 
     canvas.addEventListener('mousedown', function(e) {
