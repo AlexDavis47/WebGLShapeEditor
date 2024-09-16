@@ -410,9 +410,9 @@ function updateLayerList() {
         const copyButtons = document.createElement('div');
         copyButtons.className = 'layerCopyButtons';
 
-        const copyVerticesButton = createCopyButton('V', () => copyToClipboard(JSON.stringify(layer.vertices)));
-        const copyColorsButton = createCopyButton('C', () => copyToClipboard(JSON.stringify(layer.colors)));
-        const copyIndicesButton = createCopyButton('I', () => copyToClipboard(JSON.stringify(generateIndices(layer.vertices))));
+        const copyVerticesButton = createCopyButton('assets/vertex.png', 'Copy Vertices', () => copyToClipboard(JSON.stringify(layer.vertices)));
+        const copyColorsButton = createCopyButton('assets/colors.png', 'Copy Colors', () => copyToClipboard(JSON.stringify(layer.colors)));
+        const copyIndicesButton = createCopyButton('assets/indices.png', 'Copy Indices', () => copyToClipboard(JSON.stringify(generateIndices(layer.vertices))));
 
         copyButtons.appendChild(copyVerticesButton);
         copyButtons.appendChild(copyColorsButton);
@@ -654,10 +654,13 @@ function copyAllLayersData() {
 }
 
 // Helper functions
-function createCopyButton(text, onClick) {
+function createCopyButton(iconSrc, altText, onClick) {
     const button = document.createElement('button');
     button.className = 'copyButton';
-    button.textContent = text;
+    const icon = document.createElement('img');
+    icon.src = iconSrc;
+    icon.alt = altText;
+    button.appendChild(icon);
     button.onclick = onClick;
     return button;
 }
