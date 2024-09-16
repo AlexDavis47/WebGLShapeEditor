@@ -307,7 +307,7 @@ function addVertex(x, y) {
     const insertIndex = findInsertionPoint(layer, glX, glY);
 
     // Insert the new vertex
-    layer.vertices.splice(insertIndex, 0, glX, glY);
+    layer.vertices.splice(insertIndex, 0, glX, glY, 0);
 
     // Insert the color for the new vertex
     const colorPicker = document.getElementById('colorPicker');
