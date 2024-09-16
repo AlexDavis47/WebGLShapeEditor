@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Shape Editor</title>
+    <title>Shape Designer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,63 +11,76 @@
         <div id="canvasContainer">
             <canvas id="glCanvas"></canvas>
         </div>
+
         <div id="controlsContainer">
-            <div id="settings">
-                <h3>Settings</h3>
-                <div>
+            <div id="logo">WebGL Shape Editor</div>
+
+            <section id="settings">
+                <h2>Settings</h2>
+                <div id="canvasControls">
                     <label for="canvasColor">Canvas Color:</label>
-                    <input type="color" id="canvasColor" value="#000000">
+                    <input type="color" id="canvasColor">
                 </div>
-            </div>
-            <div id="layerPanel">
-                <h3>Layers</h3>
+            </section>
+
+            <section id="layerPanel">
+                <h2>Layers</h2>
                 <div id="layerList"></div>
-                <button id="addLayer">Add Layer</button>
-                <button id="deleteLayer">Delete Layer</button>
-            </div>
-            <div id="snappingControls">
-                <h3>Snapping</h3>
-                <div>
+                <div class="button-group">
+                    <button id="addLayer" class="secondary-button">Add Layer</button>
+                    <button id="deleteLayer" class="secondary-button">Delete Layer</button>
+                </div>
+                <button id="clearLayer" class="secondary-button">Clear Layer</button>
+                <button id="copyAllLayers">Copy All Layer Data</button>
+            </section>
+
+            <section id="snappingControls">
+                <h2>Snapping</h2>
+                <div class="control-row">
                     <label for="gridEnabled">Snap to Grid:</label>
                     <input type="checkbox" id="gridEnabled">
                 </div>
-                <div>
+                <div class="control-row">
                     <label for="gridSize">Grid Size:</label>
-                    <input type="number" id="gridSize" min="0" max="1" step="0.01">
+                    <input type="number" id="gridSize" min="0.01" step="0.01" value="0.1">
                 </div>
-        </div>
-            <div id="vertexEditor">
-                <h3>Vertex Editor</h3>
+            </section>
+
+            <section id="vertexEditor">
+                <h2>Vertex Editor</h2>
                 <div id="vertexControls">
-                    <div id="vertexPositions">
-                        <div>
-                            <label for="vertexX">X:</label>
-                            <input type="number" id="vertexX" min="-1" max="1" step="0.01">
+                    <div class="control-columns">
+                        <div id="vertexPositions">
+                            <div class="control-row">
+                                <label for="vertexX">X:</label>
+                                <input type="number" id="vertexX" step="0.01">
+                            </div>
+                            <div class="control-row">
+                                <label for="vertexY">Y:</label>
+                                <input type="number" id="vertexY" step="0.01">
+                            </div>
                         </div>
-                        <div>
-                            <label for="vertexY">Y:</label>
-                            <input type="number" id="vertexY" min="-1" max="1" step="0.01">
-                        </div>
-                    </div>
-                    <div id="vertexColors">
-                        <div>
-                            <label for="vertexR">R:</label>
-                            <input type="number" id="vertexR" min="0" max="1" step="0.01">
-                        </div>
-                        <div>
-                            <label for="vertexG">G:</label>
-                            <input type="number" id="vertexG" min="0" max="1" step="0.01">
-                        </div>
-                        <div>
-                            <label for="vertexB">B:</label>
-                            <input type="number" id="vertexB" min="0" max="1" step="0.01">
+                        <div id="vertexColors">
+                            <div class="control-row">
+                                <label for="vertexR">R:</label>
+                                <input type="number" id="vertexR" min="0" max="1" step="0.01">
+                            </div>
+                            <div class="control-row">
+                                <label for="vertexG">G:</label>
+                                <input type="number" id="vertexG" min="0" max="1" step="0.01">
+                            </div>
+                            <div class="control-row">
+                                <label for="vertexB">B:</label>
+                                <input type="number" id="vertexB" min="0" max="1" step="0.01">
+                            </div>
                         </div>
                     </div>
                 </div>
                 <button id="deleteVertex">Delete Vertex</button>
-            </div>
-            <div id="shapeControls">
-                <h3>Shape Controls</h3>
+            </section>
+
+            <section id="shapeControls">
+                <h2>Shape Controls</h2>
                 <select id="drawMode">
                     <option value="POINTS">Points</option>
                     <option value="LINES">Lines</option>
@@ -77,15 +90,15 @@
                     <option value="TRIANGLE_STRIP">Triangle Strip</option>
                     <option value="TRIANGLE_FAN">Triangle Fan</option>
                 </select>
-                <input type="color" id="colorPicker" value="#999999">
+                <input type="color" id="colorPicker">
                 <button id="setColor">Set Color</button>
-                <button id="clearLayer">Clear Layer</button>
-            </div>
-            <div id="export">
-                <h3>Export</h3>
+            </section>
+
+            <section id="export">
+                <h2>Export</h2>
                 <input type="text" id="modelName" placeholder="Enter model name">
                 <button id="exportButton">Export Model</button>
-            </div>
+            </section>
         </div>
     </div>
     <script src="webgl-utils.js"></script>

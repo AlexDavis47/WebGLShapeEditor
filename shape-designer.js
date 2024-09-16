@@ -110,7 +110,6 @@ class Layer {
         this.name = name;
         this.vertices = [];
         this.colors = [];
-        this.links = [];
         this.drawMode = 'TRIANGLES';
     }
 }
@@ -269,17 +268,29 @@ function updateLayerList() {
     const layerList = document.getElementById('layerList');
     layerList.innerHTML = '';
     layers.forEach((layer, index) => {
-        const button = document.createElement('button');
-        button.textContent = layer.name;
-        button.className = 'layerButton';
-        if (index === currentLayerIndex) {
-            button.classList.add('selected');
-        }
-        button.onclick = () => selectLayer(index);
-        layerList.appendChild(button);
+        const layerContainer = document.createElement('div');
+        layerContainer.className = 'layerButton' + (index === currentLayerIndex ? ' selected' : '');
+
+        const layerName = document.createElement('span');
+        layerName.textContent = layer.name;
+        layerName.onclick = () => selectLayer(index);
+
+        const copyButtons = document.createElement('div');
+        copyButtons.className = 'layerCopyButtons';
+
+        const copyVerticesButton = createCopyButton('V', () => copyToClipboard(JSON.stringify(layer.vertices)));
+        const copyColorsButton = createCopyButton('C', () => copyToClipboard(JSON.stringify(layer.colors)));
+        const copyIndicesButton = createCopyButton('I', () => copyToClipboard(JSON.stringify(generateIndices(layer.vertices))));
+
+        copyButtons.appendChild(copyVerticesButton);
+        copyButtons.appendChild(copyColorsButton);
+        copyButtons.appendChild(copyIndicesButton);
+
+        layerContainer.appendChild(layerName);
+        layerContainer.appendChild(copyButtons);
+        layerList.appendChild(layerContainer);
     });
 }
-
 function selectLayer(index) {
     currentLayerIndex = index;
     updateLayerList();
@@ -288,10 +299,7 @@ function selectLayer(index) {
 }
 
 
-function addVertex(x, y) {
-    if (currentLayerIndex === -1) return -1;
-
-    const layer = layers[currentLayerIndex];
+function getGLCoords(x, y) {
     const rect = gl.canvas.getBoundingClientRect();
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
@@ -303,6 +311,16 @@ function addVertex(x, y) {
         glX = Math.round(glX / gridSize) * gridSize;
         glY = Math.round(glY / gridSize) * gridSize;
     }
+    return { glX, glY };
+}
+
+
+function addVertex(x, y) {
+    if (currentLayerIndex === -1) return -1;
+
+    const layer = layers[currentLayerIndex];
+
+    const { glX, glY } = getGLCoords(x, y);
 
     const insertIndex = findInsertionPoint(layer, glX, glY);
 
@@ -317,17 +335,6 @@ function addVertex(x, y) {
     draw();
     return insertIndex / 3; // Return the index of the new vertex
 }
-
-function canvasToWebGLCoords(x, y) {
-    const rect = gl.canvas.getBoundingClientRect();
-    const canvasX = x - rect.left;
-    const canvasY = y - rect.top;
-    return {
-        x: (canvasX / gl.canvas.width) * 2 - 1,
-        y: -((canvasY / gl.canvas.height) * 2 - 1)
-    };
-}
-
 
 
 function getNearestVertex(x, y) {
@@ -382,7 +389,7 @@ function exportShape() {
     const className = 'Model2D_' + modelName.charAt(0).toUpperCase() + modelName.slice(1);
     const fileName = `model2D_${modelName.toLowerCase()}.js`;
 
-    let shapesCode = layers.map((layer, index) => {
+    let shapesCode = layers.map((layer) => {
         const verticesStr = JSON.stringify(layer.vertices);
         const colorsStr = JSON.stringify(layer.colors);
         const indicesStr = JSON.stringify(generateIndices(layer.vertices));
@@ -412,7 +419,6 @@ function clearLayer() {
     if (currentLayerIndex !== -1) {
         layers[currentLayerIndex].vertices = [];
         layers[currentLayerIndex].colors = [];
-        layers[currentLayerIndex].links = [];
         draw();
     }
 }
@@ -420,7 +426,7 @@ function clearLayer() {
 function generateIndices(vertices) {
     let indices = [];
 
-    if (vertices.length <= 9) { // 3 vertices or less
+    if (vertices.length <= 9) { // 3 vertices or fewer
         for (let i = 0; i < vertices.length / 3; i++) {
             indices.push(i);
         }
@@ -445,14 +451,6 @@ function downloadFile(filename, text) {
     element.click();
 
     document.body.removeChild(element);
-}
-
-
-function clearCanvas() {
-    vertices = [];
-    colors = [];
-    links = [];
-    draw();
 }
 
 function deleteLayer() {
@@ -505,17 +503,7 @@ function findInsertionPoint(layer, newX, newY) {
 function updateVertexPosition(x, y) {
     if (currentLayerIndex === -1 || selectedVertex === -1) return;
 
-    const rect = gl.canvas.getBoundingClientRect();
-    const canvasX = x - rect.left;
-    const canvasY = y - rect.top;
-    let glX = (canvasX / gl.canvas.width) * 2 - 1;
-    let glY = -((canvasY / gl.canvas.height) * 2 - 1);
-
-    // Apply grid snapping if enabled
-    if (snapToGrid) {
-        glX = Math.round(glX / gridSize) * gridSize;
-        glY = Math.round(glY / gridSize) * gridSize;
-    }
+    const { glX, glY } = getGLCoords(x, y);
 
     const vertices = layers[currentLayerIndex].vertices;
     vertices[selectedVertex * 3] = glX;
@@ -534,10 +522,39 @@ function updateGridSize() {
     draw();
 }
 
+
+
+function createCopyButton(text, onClick) {
+    const button = document.createElement('button');
+    button.className = 'copyButton';
+    button.textContent = text;
+    button.onclick = onClick;
+    return button;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        console.log('Copied to clipboard');
+    }, (err) => {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+document.getElementById('copyAllLayers').addEventListener('click', () => {
+    const allLayersData = layers.map(layer => ({
+        name: layer.name,
+        vertices: layer.vertices,
+        colors: layer.colors,
+        indices: generateIndices(layer.vertices),
+        drawMode: layer.drawMode
+    }));
+    copyToClipboard(JSON.stringify(allLayersData, null, 2));
+});
+
 window.onload = function() {
     initWebGL();
 
-    colorModLoc = gl.getUniformLocation(program, "colorModifier");
+    let colorModLoc = gl.getUniformLocation(program, "colorModifier");
     gl.uniform4f(colorModLoc, 1, 1, 1, 1); // Initialize to white
 
     const canvas = document.getElementById('glCanvas');
@@ -560,11 +577,10 @@ window.onload = function() {
 
     const backgroundColorInput = document.getElementById('canvasColor');
 
-
-
     // Init the grid size html element
     gridSizeInput.value = gridSize;
 
+    backgroundColorInput.value = '#000000';
 
     backgroundColorInput.addEventListener('input', function() {
         const color = hexToRgb(this.value);
@@ -587,11 +603,11 @@ window.onload = function() {
     deleteVertexButton.addEventListener('click', deleteVertex);
 
     setColorButton.addEventListener('click', function() { //TODO: Improve this
-    if (selectedVertex !== -1 && currentLayerIndex !== -1) {
-        setVertexColor(selectedVertex);
-        draw();
-    }
-});
+        if (selectedVertex !== -1 && currentLayerIndex !== -1) {
+            setVertexColor(selectedVertex);
+            draw();
+        }
+    });
 
     addLayerButton.addEventListener('click', addLayer);
 
@@ -654,7 +670,6 @@ window.onload = function() {
         }
     }
 
-    // Add an initial layer
     addLayer();
 };
 
