@@ -410,9 +410,9 @@ function updateLayerList() {
         const copyButtons = document.createElement('div');
         copyButtons.className = 'layerCopyButtons';
 
-        const copyVerticesButton = createCopyButton('assets/vertex.png', 'Copy Vertices', () => copyToClipboard(JSON.stringify(layer.vertices)));
-        const copyColorsButton = createCopyButton('assets/colors.png', 'Copy Colors', () => copyToClipboard(JSON.stringify(layer.colors)));
-        const copyIndicesButton = createCopyButton('assets/indices.png', 'Copy Indices', () => copyToClipboard(JSON.stringify(generateIndices(layer.vertices))));
+        const copyVerticesButton = createCopyButton('V', () => copyToClipboard(JSON.stringify(layer.vertices)), 'Copy vertices');
+        const copyColorsButton = createCopyButton('C', () => copyToClipboard(JSON.stringify(layer.colors)), 'Copy colors');
+        const copyIndicesButton = createCopyButton('I', () => copyToClipboard(JSON.stringify(generateIndices(layer.vertices))), 'Copy indices');
 
         copyButtons.appendChild(copyVerticesButton);
         copyButtons.appendChild(copyColorsButton);
@@ -422,6 +422,9 @@ function updateLayerList() {
         layerContainer.appendChild(copyButtons);
         layerList.appendChild(layerContainer);
     });
+
+    // Initialize tooltips for the new buttons
+    tippy('.copyButton'); // TODO: Temporarily initializng tooltips in here, it should be done in tooltips.js somehow.
 }
 
 function updateVertexEditor() {
@@ -567,6 +570,8 @@ window.onload = function() {
 
     document.getElementById('copyAllLayers').addEventListener('click', copyAllLayersData);
 
+    initializeTooltips();
+
     addLayer();
 };
 
@@ -654,14 +659,15 @@ function copyAllLayersData() {
 }
 
 // Helper functions
-function createCopyButton(iconSrc, altText, onClick) {
+function createCopyButton(text, onClick, tooltipContent) {
     const button = document.createElement('button');
     button.className = 'copyButton';
-    const icon = document.createElement('img');
-    icon.src = iconSrc;
-    icon.alt = altText;
-    button.appendChild(icon);
+    button.textContent = text;
     button.onclick = onClick;
+
+    // Add a data attribute for the tooltip content
+    button.setAttribute('data-tippy-content', tooltipContent);
+
     return button;
 }
 
