@@ -12,6 +12,13 @@
             <canvas id="glCanvas"></canvas>
         </div>
         <div id="controlsContainer">
+            <div id="settings">
+                <h3>Settings</h3>
+                <div>
+                    <label for="canvasColor">Canvas Color:</label>
+                    <input type="color" id="canvasColor" value="#000000">
+                </div>
+            </div>
             <div id="layerPanel">
                 <h3>Layers</h3>
                 <div id="layerList"></div>
@@ -73,7 +80,7 @@
                 <input type="text" id="modelName" placeholder="Enter model name">
                 <button id="exportButton">Export Model</button>
             </div>
-
+        </div>
     </div>
     <script src="webgl-utils.js"></script>
     <script src="shape-designer.js"></script>

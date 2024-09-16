@@ -11,7 +11,7 @@ let selectedVertex = -1;
 let snapToGrid = false;
 let gridSize = 0.1;
 
-let backgroundColor = [1, 1, 1];
+let backgroundColor = [0, 0, 0];
 
 const SELECTION_SENSITIVITY = 0.04;
 
@@ -124,18 +124,20 @@ function drawGridLines() {
     // Calculate the number of lines based on the grid size
     let numLines = Math.floor(2 / gridSize) + 1;
 
+    let color = adjustContrast(backgroundColor, 0.5);
+
     // Create vertical lines
     for (let i = 0; i < numLines; i++) {
         let x = -1 + i * gridSize;
         lineVertices.push(x, -1, 0, x, 1, 0);
-        lineColors.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7);  // Light gray color
+        lineColors.push(...color, ...color);  // Light gray color
     }
 
     // Create horizontal lines
     for (let i = 0; i < numLines; i++) {
         let y = -1 + i * gridSize;
         lineVertices.push(-1, y, 0, 1, y, 0);
-        lineColors.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7);  // Light gray color
+        lineColors.push(...color, ...color);  // Light gray color
     }
 
     const positionBuffer = gl.createBuffer();
@@ -149,9 +151,6 @@ function drawGridLines() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineColors), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(colorAttributeLocation);
     gl.vertexAttribPointer(colorAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    // Set line width (note: this may not work on all browsers/GPUs)
-    gl.lineWidth(1.0);
 
     // Draw the grid lines
     gl.drawArrays(gl.LINES, 0, lineVertices.length / 3);
@@ -525,37 +524,6 @@ function updateVertexPosition(x, y) {
     updateVertexEditor();
 }
 
-function distanceToLineSegment(x, y, x1, y1, x2, y2) {
-    const A = x - x1;
-    const B = y - y1;
-    const C = x2 - x1;
-    const D = y2 - y1;
-
-    const dot = A * C + B * D;
-    const lenSq = C * C + D * D;
-    let param = -1;
-    if (lenSq !== 0) {
-        param = dot / lenSq;
-    }
-
-    let xx, yy;
-
-    if (param < 0) {
-        xx = x1;
-        yy = y1;
-    } else if (param > 1) {
-        xx = x2;
-        yy = y2;
-    } else {
-        xx = x1 + param * C;
-        yy = y1 + param * D;
-    }
-
-    const dx = x - xx;
-    const dy = y - yy;
-    return Math.sqrt(dx * dx + dy * dy);
-}
-
 function updateGridEnabled() {
     snapToGrid = document.getElementById('gridEnabled').checked;
     draw();
@@ -590,11 +558,23 @@ window.onload = function() {
     const gridEnabledCheckbox = document.getElementById('gridEnabled');
     const gridSizeInput = document.getElementById('gridSize');
 
-    gridEnabledCheckbox.addEventListener('change', updateGridEnabled);
-    gridSizeInput.addEventListener('input', updateGridSize);
+    const backgroundColorInput = document.getElementById('canvasColor');
+
+
 
     // Init the grid size html element
     gridSizeInput.value = gridSize;
+
+
+    backgroundColorInput.addEventListener('input', function() {
+        const color = hexToRgb(this.value);
+        backgroundColor = [color.r / 255, color.g / 255, color.b / 255];
+        draw();
+    });
+
+
+    gridEnabledCheckbox.addEventListener('change', updateGridEnabled);
+    gridSizeInput.addEventListener('input', updateGridSize);
 
 
     updateVertexX.addEventListener('input', updateVertexFromEditor);
