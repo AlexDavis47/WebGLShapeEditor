@@ -281,8 +281,12 @@ function addVertex(x, y) {
     // Insert the new vertex
     layer.vertices.splice(insertIndex, 0, glX, glY, 0);
 
-    // Insert the color for the new vertex (white)
-    layer.colors.splice(insertIndex, 0, 1, 1, 1);
+    // Get the color from the color picker
+    const colorPicker = document.getElementById('colorPicker');
+    const color = hexToRgb(colorPicker.value);
+
+    // Insert the color for the new vertex
+    layer.colors.splice(insertIndex, 0, color.r / 255, color.g / 255, color.b / 255);
 
     draw();
     return insertIndex / 3; // Return the index of the new vertex
@@ -310,15 +314,19 @@ function updateVertexPosition(x, y) {
     updateVertexEditor();
 }
 
-function setVertexColor(index) {
-    if (currentLayerIndex === -1) return;
+function setVertexColor() {
+    if (currentLayerIndex === -1 || selectedVertex === -1) return;
 
     const colorPicker = document.getElementById('colorPicker');
     const color = hexToRgb(colorPicker.value);
     const colors = layers[currentLayerIndex].colors;
-    colors[index * 3] = color.r / 255;
-    colors[index * 3 + 1] = color.g / 255;
-    colors[index * 3 + 2] = color.b / 255;
+    const index = selectedVertex * 3;
+
+    colors[index] = color.r / 255;
+    colors[index + 1] = color.g / 255;
+    colors[index + 2] = color.b / 255;
+
+    updateVertexEditor();
     draw();
 }
 
@@ -541,6 +549,11 @@ function downloadFile(filename, text) {
     document.body.removeChild(element);
 }
 
+function initializeColorPicker() {
+    const colorPicker = document.getElementById('colorPicker');
+    colorPicker.value = '#FFFFFF';  // Set to white
+}
+
 // Initialization
 window.onload = function() {
     initWebGL();
@@ -565,7 +578,7 @@ window.onload = function() {
     canvas.addEventListener('mousemove', handleCanvasMouseMove);
     canvas.addEventListener('mouseup', handleCanvasMouseUp);
     addLayerButton.addEventListener('click', addLayer);
-    setColorButton.addEventListener('click', handleSetColor);
+    setColorButton.addEventListener('click', setVertexColor);
     exportButton.addEventListener('click', exportShape);
     clearLayerButton.addEventListener('click', clearLayer);
     deleteLayerButton.addEventListener('click', deleteLayer);
@@ -584,6 +597,7 @@ window.onload = function() {
     document.getElementById('copyAllLayers').addEventListener('click', copyAllLayerData);
 
     initializeTooltips();
+    initializeColorPicker();
 
     addLayer();
 };
