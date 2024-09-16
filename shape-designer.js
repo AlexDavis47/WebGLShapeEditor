@@ -8,6 +8,11 @@ let currentLayerIndex = -1;
 let isDragging = false;
 let selectedVertex = -1;
 
+let snapToGrid = false;
+let gridSize = 0.1;
+
+let backgroundColor = [1, 1, 1];
+
 const SELECTION_SENSITIVITY = 0.04;
 
 function initWebGL() {
@@ -62,8 +67,10 @@ function initWebGL() {
 }
 
 function draw() {
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clearColor(backgroundColor[0], backgroundColor[1], backgroundColor[2], 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    drawGridLines();
 
     layers.forEach((layer, index) => {
         if (layer.vertices.length > 0) {
@@ -95,6 +102,7 @@ function draw() {
     // Draw the vertex indicator
     drawVertexIndicator();
     drawSelectedLayerBoundingBox();
+
 }
 
 class Layer {
@@ -105,6 +113,48 @@ class Layer {
         this.links = [];
         this.drawMode = 'TRIANGLES';
     }
+}
+
+function drawGridLines() {
+    if (!snapToGrid) return;
+
+    let lineVertices = [];
+    let lineColors = [];
+
+    // Calculate the number of lines based on the grid size
+    let numLines = Math.floor(2 / gridSize) + 1;
+
+    // Create vertical lines
+    for (let i = 0; i < numLines; i++) {
+        let x = -1 + i * gridSize;
+        lineVertices.push(x, -1, 0, x, 1, 0);
+        lineColors.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7);  // Light gray color
+    }
+
+    // Create horizontal lines
+    for (let i = 0; i < numLines; i++) {
+        let y = -1 + i * gridSize;
+        lineVertices.push(-1, y, 0, 1, y, 0);
+        lineColors.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7);  // Light gray color
+    }
+
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineVertices), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(positionAttributeLocation);
+    gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineColors), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(colorAttributeLocation);
+    gl.vertexAttribPointer(colorAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    // Set line width (note: this may not work on all browsers/GPUs)
+    gl.lineWidth(1.0);
+
+    // Draw the grid lines
+    gl.drawArrays(gl.LINES, 0, lineVertices.length / 3);
 }
 
 function drawVertexIndicator() {
@@ -246,8 +296,14 @@ function addVertex(x, y) {
     const rect = gl.canvas.getBoundingClientRect();
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
-    const glX = (canvasX / gl.canvas.width) * 2 - 1;
-    const glY = -((canvasY / gl.canvas.height) * 2 - 1);
+    let glX = (canvasX / gl.canvas.width) * 2 - 1;
+    let glY = -((canvasY / gl.canvas.height) * 2 - 1);
+
+    // Apply grid snapping if enabled
+    if (snapToGrid) {
+        glX = Math.round(glX / gridSize) * gridSize;
+        glY = Math.round(glY / gridSize) * gridSize;
+    }
 
     const insertIndex = findInsertionPoint(layer, glX, glY);
 
@@ -453,8 +509,14 @@ function updateVertexPosition(x, y) {
     const rect = gl.canvas.getBoundingClientRect();
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
-    const glX = (canvasX / gl.canvas.width) * 2 - 1;
-    const glY = -((canvasY / gl.canvas.height) * 2 - 1);
+    let glX = (canvasX / gl.canvas.width) * 2 - 1;
+    let glY = -((canvasY / gl.canvas.height) * 2 - 1);
+
+    // Apply grid snapping if enabled
+    if (snapToGrid) {
+        glX = Math.round(glX / gridSize) * gridSize;
+        glY = Math.round(glY / gridSize) * gridSize;
+    }
 
     const vertices = layers[currentLayerIndex].vertices;
     vertices[selectedVertex * 3] = glX;
@@ -462,7 +524,6 @@ function updateVertexPosition(x, y) {
 
     updateVertexEditor();
 }
-
 
 function distanceToLineSegment(x, y, x1, y1, x2, y2) {
     const A = x - x1;
@@ -495,6 +556,15 @@ function distanceToLineSegment(x, y, x1, y1, x2, y2) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+function updateGridEnabled() {
+    snapToGrid = document.getElementById('gridEnabled').checked;
+    draw();
+}
+
+function updateGridSize() {
+    gridSize = parseFloat(document.getElementById('gridSize').value);
+    draw();
+}
 
 window.onload = function() {
     initWebGL();
@@ -516,6 +586,16 @@ window.onload = function() {
     const updateVertexR = document.getElementById('vertexR');
     const updateVertexG = document.getElementById('vertexG');
     const updateVertexB = document.getElementById('vertexB');
+
+    const gridEnabledCheckbox = document.getElementById('gridEnabled');
+    const gridSizeInput = document.getElementById('gridSize');
+
+    gridEnabledCheckbox.addEventListener('change', updateGridEnabled);
+    gridSizeInput.addEventListener('input', updateGridSize);
+
+    // Init the grid size html element
+    gridSizeInput.value = gridSize;
+
 
     updateVertexX.addEventListener('input', updateVertexFromEditor);
     updateVertexY.addEventListener('input', updateVertexFromEditor);
@@ -615,7 +695,6 @@ function updateVertexEditor() {
     document.getElementById('vertexR').value = layer.colors[colorIndex].toFixed(2);
     document.getElementById('vertexG').value = layer.colors[colorIndex + 1].toFixed(2);
     document.getElementById('vertexB').value = layer.colors[colorIndex + 2].toFixed(2);
-
 }
 
 function updateVertexFromEditor() {
@@ -630,7 +709,6 @@ function updateVertexFromEditor() {
     layer.colors[colorIndex] = parseFloat(document.getElementById('vertexR').value);
     layer.colors[colorIndex + 1] = parseFloat(document.getElementById('vertexG').value);
     layer.colors[colorIndex + 2] = parseFloat(document.getElementById('vertexB').value);
-
 
     draw();
 }
