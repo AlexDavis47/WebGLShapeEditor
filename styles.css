@@ -10,6 +10,33 @@ body {
     height: 100vh;
 }
 
+#vertexControls {
+    display: flex;
+    margin-right: 25%;
+    flex-direction: row;
+    gap: 10%;
+}
+
+#vertexPositions {
+    flex: 50%;
+}
+
+#vertexPositions div {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#vertexColors {
+    flex: 50%;
+}
+
+#vertexColors div {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
 #canvasContainer {
     flex: 1;
     padding: 20px;
