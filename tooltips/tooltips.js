@@ -105,4 +105,8 @@ function initializeTooltips() {
         placement: 'top',
         ...tippyOptions
     });
+    tippy('#downloadModel2D', {
+        content: 'Download the starter Model2D class that you can use to render your shapes',
+        placement: 'top'
+    });
 }

@@ -553,6 +553,7 @@ function downloadFile(filename, text) {
     document.body.removeChild(element);
 }
 
+
 function initializeColorPicker() {
     const colorPicker = document.getElementById('colorPicker');
     colorPicker.value = '#FFFFFF';  // Set to white
@@ -573,6 +574,7 @@ window.onload = function() {
     const gridEnabledCheckbox = document.getElementById('gridEnabled');
     const gridSizeInput = document.getElementById('gridSize');
     const backgroundColorInput = document.getElementById('canvasColor');
+    const downloadModel2DButton = document.getElementById('downloadModel2D');
 
     gridSizeInput.value = gridSize;
     backgroundColorInput.value = '#000000';
@@ -591,6 +593,7 @@ window.onload = function() {
     gridSizeInput.addEventListener('input', updateGridSize);
     backgroundColorInput.addEventListener('input', updateBackgroundColor);
     drawModeSelect.addEventListener('change', updateDrawMode);
+    downloadModel2DButton.addEventListener('click', downloadModel2D);
 
     document.getElementById('vertexX').addEventListener('input', updateVertexFromEditor);
     document.getElementById('vertexY').addEventListener('input', updateVertexFromEditor);
