@@ -396,6 +396,7 @@ function findInsertionPoint(layer, newX, newY) {
     return insertIndex;
 }
 
+
 function updateLayerList() {
     const layerList = document.getElementById('layerList');
     layerList.innerHTML = '';
@@ -410,9 +411,21 @@ function updateLayerList() {
         const copyButtons = document.createElement('div');
         copyButtons.className = 'layerCopyButtons';
 
-        const copyVerticesButton = createCopyButton('V', () => copyToClipboard(JSON.stringify(layer.vertices)), 'Copy vertices');
-        const copyColorsButton = createCopyButton('C', () => copyToClipboard(JSON.stringify(layer.colors)), 'Copy colors');
-        const copyIndicesButton = createCopyButton('I', () => copyToClipboard(JSON.stringify(generateIndices(layer.vertices))), 'Copy indices');
+        const copyVerticesButton = createCopyButton(
+            'assets/vertex.png',
+            'Copy Vertices',
+            () => copyToClipboard(getVerticesString(index))
+        );
+        const copyColorsButton = createCopyButton(
+            'assets/colors.png',
+            'Copy Colors',
+            () => copyToClipboard(getColorsString(index))
+        );
+        const copyIndicesButton = createCopyButton(
+            'assets/indices.png',
+            'Copy Indices',
+            () => copyToClipboard(getIndicesString(index))
+        );
 
         copyButtons.appendChild(copyVerticesButton);
         copyButtons.appendChild(copyColorsButton);
@@ -424,7 +437,7 @@ function updateLayerList() {
     });
 
     // Initialize tooltips for the new buttons
-    tippy('.copyButton'); // TODO: Temporarily initializng tooltips in here, it should be done in tooltips.js somehow.
+    tippy('.copyButton'); // TODO: Temporarily initializing tooltips in here, it should be done in tooltips.js somehow.
 }
 
 function updateVertexEditor() {
@@ -568,7 +581,7 @@ window.onload = function() {
     document.getElementById('vertexG').addEventListener('input', updateVertexFromEditor);
     document.getElementById('vertexB').addEventListener('input', updateVertexFromEditor);
 
-    document.getElementById('copyAllLayers').addEventListener('click', copyAllLayersData);
+    document.getElementById('copyAllLayers').addEventListener('click', copyAllLayerData);
 
     initializeTooltips();
 
@@ -647,22 +660,25 @@ function updateDrawMode() {
     }
 }
 
-function copyAllLayersData() {
-    const allLayersData = layers.map(layer => ({
-        name: layer.name,
-        vertices: layer.vertices,
-        colors: layer.colors,
-        indices: generateIndices(layer.vertices),
-        drawMode: layer.drawMode
-    }));
-    copyToClipboard(JSON.stringify(allLayersData, null, 2));
+function copyAllLayerData() {
+    const verticesStr = getVerticesString(currentLayerIndex);
+    const colorsStr = getColorsString(currentLayerIndex);
+    const indicesStr = getIndicesString(currentLayerIndex);
+
+    const allLayerData = `${verticesStr}\n\n${colorsStr}\n\n${indicesStr}`;
+    copyToClipboard(allLayerData);
 }
 
 // Helper functions
-function createCopyButton(text, onClick, tooltipContent) {
+function createCopyButton(iconSrc, tooltipContent, onClick) {
     const button = document.createElement('button');
     button.className = 'copyButton';
-    button.textContent = text;
+
+    const icon = document.createElement('img');
+    icon.src = iconSrc;
+    icon.alt = tooltipContent;
+    button.appendChild(icon);
+
     button.onclick = onClick;
 
     // Add a data attribute for the tooltip content
@@ -677,4 +693,33 @@ function copyToClipboard(text) {
     }, (err) => {
         console.error('Could not copy text: ', err);
     });
+}
+
+function formatArray(arr, groupSize) {
+    return arr.reduce((result, value, index) => {
+        if (index % groupSize === 0) {
+            result += index === 0 ? '' : ',\n    ';
+        }
+        result += value.toFixed(2);
+        if (index % groupSize !== groupSize - 1 && index !== arr.length - 1) {
+            result += ', ';
+        }
+        return result;
+    }, '');
+}
+
+function getVerticesString(layerIndex) {
+    const vertices = layers[layerIndex].vertices;
+    return `const vertices = [\n    ${formatArray(vertices, 3)}\n];`;
+}
+
+function getColorsString(layerIndex) {
+    const colors = layers[layerIndex].colors;
+    return `const colors = [\n    ${formatArray(colors, 3)}\n];`;
+}
+
+function getIndicesString(layerIndex) {
+    const vertices = layers[layerIndex].vertices;
+    const indices = generateIndices(vertices);
+    return `const indices = [${indices.join(', ')}];`;
 }
