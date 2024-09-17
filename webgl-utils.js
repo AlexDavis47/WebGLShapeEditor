@@ -88,3 +88,16 @@ function addColors(color1, color2) {
 function adjustContrast(color, factor) {
     return color.map(value => 0.5 + (value - 0.5) * factor);
 }
+
+function downloadFile(filename, text) {
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+
+    element.style.display = 'none';
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+}

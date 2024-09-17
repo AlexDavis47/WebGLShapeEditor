@@ -540,19 +540,6 @@ function generateIndices(vertices) {
     return indices;
 }
 
-function downloadFile(filename, text) {
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-
-    element.style.display = 'none';
-    document.body.appendChild(element);
-
-    element.click();
-
-    document.body.removeChild(element);
-}
-
 
 function initializeColorPicker() {
     const colorPicker = document.getElementById('colorPicker');
@@ -639,22 +626,6 @@ function handleCanvasMouseMove(e) {
 function handleCanvasMouseUp(e) {
     if (e.button === 0) { // Left click release
         isDragging = false;
-    }
-}
-
-function handleSetColor() {
-    if (currentLayerIndex !== -1) {
-        canvas.addEventListener('click', setColorListener);
-    }
-}
-
-function setColorListener(e) {
-    if (currentLayerIndex !== -1) {
-        const index = getNearestVertex(e.clientX, e.clientY);
-        if (index !== -1) {
-            setVertexColor(index);
-        }
-        canvas.removeEventListener('click', setColorListener);
     }
 }
 
