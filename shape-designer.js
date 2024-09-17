@@ -721,7 +721,7 @@ function formatArray(arr, groupSize) {
         if (index % groupSize === 0) {
             result += index === 0 ? '' : ',\n    ';
         }
-        result += value.toFixed(2);
+        result += value.toFixed(4); //TODO: Allow for custom precision
         if (index % groupSize !== groupSize - 1 && index !== arr.length - 1) {
             result += ', ';
         }
