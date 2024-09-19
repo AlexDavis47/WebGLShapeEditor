@@ -1,20 +1,18 @@
-let gl;
-let program;
-let positionAttributeLocation;
-let colorAttributeLocation;
-let colorModLocation;
+// Global variables
+let gl, program;
+let positionAttributeLocation, colorAttributeLocation, colorModLocation;
 let layers = [];
 let currentLayerIndex = -1;
 let isDragging = false;
 let selectedVertex = -1;
-
 let snapToGrid = false;
 let gridSize = 0.1;
-
-let backgroundColor = [1, 1, 1];
+let backgroundColor = [0, 0, 0];
+let previewMode = false; //TODO: Implement preview mode?
 
 const SELECTION_SENSITIVITY = 0.04;
 
+// WebGL initialization
 function initWebGL() {
     const canvas = document.getElementById('glCanvas');
     gl = canvas.getContext('webgl');
@@ -30,6 +28,7 @@ function initWebGL() {
     canvas.height = size;
     gl.viewport(0, 0, canvas.width, canvas.height);
 
+    // Create shaders and program
     const vertexShaderSource = `
         attribute vec3 a_position;
         attribute vec3 a_color;
@@ -66,12 +65,19 @@ function initWebGL() {
     gl.uniform4f(colorModLocation, 1.0, 1.0, 1.0, 1.0);
 }
 
+// Drawing functions
 function draw() {
-    gl.clearColor(backgroundColor[0], backgroundColor[1], backgroundColor[2], 1.0);
+    gl.clearColor(...backgroundColor, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     drawGridLines();
+    drawLayers();
+    drawVertexIndicator();
+    drawSelectedLayerBoundingBox();
 
+}
+
+function drawLayers() {
     layers.forEach((layer, index) => {
         if (layer.vertices.length > 0) {
             const positionBuffer = gl.createBuffer();
@@ -88,54 +94,38 @@ function draw() {
 
             gl.drawArrays(gl[layer.drawMode], 0, layer.vertices.length / 3);
 
-            // Always draw points for better visibility
-            gl.drawArrays(gl.POINTS, 0, layer.vertices.length / 3);
 
-            // Highlight the current layer
-            if (index === currentLayerIndex) {
+
+            if (!previewMode && index === currentLayerIndex) {
+                gl.drawArrays(gl.POINTS, 0, layer.vertices.length / 3);
                 gl.lineWidth(2);
                 gl.drawArrays(gl.LINE_LOOP, 0, layer.vertices.length / 3);
             }
         }
     });
-
-    // Draw the vertex indicator
-    drawVertexIndicator();
-    drawSelectedLayerBoundingBox();
-
-}
-
-class Layer {
-    constructor(name) {
-        this.name = name;
-        this.vertices = [];
-        this.colors = [];
-        this.links = [];
-        this.drawMode = 'TRIANGLES';
-    }
 }
 
 function drawGridLines() {
-    if (!snapToGrid) return;
+    if (!snapToGrid || previewMode) return;
 
     let lineVertices = [];
     let lineColors = [];
 
-    // Calculate the number of lines based on the grid size
-    let numLines = Math.floor(2 / gridSize) + 1;
+    const numLines = Math.floor(2 / gridSize) + 1;
+    const color = adjustContrast(backgroundColor, 0.5);
 
     // Create vertical lines
     for (let i = 0; i < numLines; i++) {
         let x = -1 + i * gridSize;
         lineVertices.push(x, -1, 0, x, 1, 0);
-        lineColors.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7);  // Light gray color
+        lineColors.push(...color, ...color);
     }
 
     // Create horizontal lines
     for (let i = 0; i < numLines; i++) {
         let y = -1 + i * gridSize;
         lineVertices.push(-1, y, 0, 1, y, 0);
-        lineColors.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7);  // Light gray color
+        lineColors.push(...color, ...color);
     }
 
     const positionBuffer = gl.createBuffer();
@@ -150,10 +140,6 @@ function drawGridLines() {
     gl.enableVertexAttribArray(colorAttributeLocation);
     gl.vertexAttribPointer(colorAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
-    // Set line width (note: this may not work on all browsers/GPUs)
-    gl.lineWidth(1.0);
-
-    // Draw the grid lines
     gl.drawArrays(gl.LINES, 0, lineVertices.length / 3);
 }
 
@@ -165,18 +151,13 @@ function drawVertexIndicator() {
     const x = layer.vertices[vertexIndex];
     const y = layer.vertices[vertexIndex + 1];
 
-    // Save the current line width and colorMod
     const originalLineWidth = gl.getParameter(gl.LINE_WIDTH);
     const originalColorMod = gl.getUniform(program, colorModLocation);
 
-    // Set line width for the indicator
     gl.lineWidth(3.0);
-
-    // Set colorMod to red
     gl.uniform4f(colorModLocation, 1.0, 0.0, 0.0, 1.0);
 
-    // Draw a square around the selected vertex
-    const size = 0.03; // Size of the square, adjust as needed
+    const size = 0.03;
     const squareVertices = [
         x - size, y - size, 0,
         x + size, y - size, 0,
@@ -184,12 +165,7 @@ function drawVertexIndicator() {
         x - size, y + size, 0
     ];
 
-    const squareColors = [
-        1, 1, 1,
-        1, 1, 1,
-        1, 1, 1,
-        1, 1, 1
-    ];
+    const squareColors = new Array(12).fill(1);
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -205,23 +181,8 @@ function drawVertexIndicator() {
 
     gl.drawArrays(gl.LINE_LOOP, 0, 4);
 
-    // Restore original line width and colorMod
     gl.lineWidth(originalLineWidth);
-    gl.uniform4f(colorModLocation, originalColorMod[0], originalColorMod[1], originalColorMod[2], originalColorMod[3]);
-}
-
-function addLayer() {
-    const layerName = `Layer ${layers.length + 1}`;
-    const newLayer = new Layer(layerName);
-    if (currentLayerIndex !== -1) {
-        newLayer.drawMode = layers[currentLayerIndex].drawMode;
-    } else {
-        newLayer.drawMode = 'POINTS';
-    }
-    layers.push(newLayer);
-    currentLayerIndex = layers.length - 1;
-    updateLayerList();
-    draw();
+    gl.uniform4f(colorModLocation, ...originalColorMod);
 }
 
 function drawSelectedLayerBoundingBox() {
@@ -235,6 +196,8 @@ function drawSelectedLayerBoundingBox() {
     const minY = Math.min(...layer.vertices.filter((_, i) => i % 3 === 1));
     const maxY = Math.max(...layer.vertices.filter((_, i) => i % 3 === 1));
 
+    const boundingBoxColor = adjustContrast(backgroundColor, 0.1);
+
     const boundingBoxVertices = [
         minX, minY, 0,
         maxX, minY, 0,
@@ -243,10 +206,10 @@ function drawSelectedLayerBoundingBox() {
     ];
 
     const boundingBoxColors = [
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1
+        ...boundingBoxColor,
+        ...boundingBoxColor,
+        ...boundingBoxColor,
+        ...boundingBoxColor
     ];
 
     const positionBuffer = gl.createBuffer();
@@ -264,21 +227,44 @@ function drawSelectedLayerBoundingBox() {
     gl.drawArrays(gl.LINE_LOOP, 0, 4);
 }
 
+class Layer {
+    constructor(name) {
+        this.name = name;
+        this.vertices = [];
+        this.colors = [];
+        this.drawMode = 'TRIANGLES';
+    }
+}
 
+function addLayer() {
+    const layerName = `Layer ${layers.length + 1}`;
+    const newLayer = new Layer(layerName);
+    if (currentLayerIndex !== -1) {
+        newLayer.drawMode = layers[currentLayerIndex].drawMode;
+    } else {
+        newLayer.drawMode = 'POINTS';
+    }
+    layers.push(newLayer);
+    currentLayerIndex = layers.length - 1;
+    updateLayerList();
+    draw();
+}
 
-function updateLayerList() {
-    const layerList = document.getElementById('layerList');
-    layerList.innerHTML = '';
-    layers.forEach((layer, index) => {
-        const button = document.createElement('button');
-        button.textContent = layer.name;
-        button.className = 'layerButton';
-        if (index === currentLayerIndex) {
-            button.classList.add('selected');
-        }
-        button.onclick = () => selectLayer(index);
-        layerList.appendChild(button);
-    });
+function deleteLayer() {
+    if (currentLayerIndex !== -1) {
+        layers.splice(currentLayerIndex, 1);
+        currentLayerIndex = -1;
+        updateLayerList();
+        draw();
+    }
+}
+
+function clearLayer() {
+    if (currentLayerIndex !== -1) {
+        layers[currentLayerIndex].vertices = [];
+        layers[currentLayerIndex].colors = [];
+        draw();
+    }
 }
 
 function selectLayer(index) {
@@ -288,57 +274,76 @@ function selectLayer(index) {
     draw();
 }
 
-
+// Vertex manipulation
 function addVertex(x, y) {
     if (currentLayerIndex === -1) return -1;
 
     const layer = layers[currentLayerIndex];
-    const rect = gl.canvas.getBoundingClientRect();
-    const canvasX = x - rect.left;
-    const canvasY = y - rect.top;
-    let glX = (canvasX / gl.canvas.width) * 2 - 1;
-    let glY = -((canvasY / gl.canvas.height) * 2 - 1);
-
-    // Apply grid snapping if enabled
-    if (snapToGrid) {
-        glX = Math.round(glX / gridSize) * gridSize;
-        glY = Math.round(glY / gridSize) * gridSize;
-    }
-
+    const { glX, glY } = getGLCoords(x, y);
     const insertIndex = findInsertionPoint(layer, glX, glY);
 
     // Insert the new vertex
     layer.vertices.splice(insertIndex, 0, glX, glY, 0);
 
-    // Insert the color for the new vertex
+    // Get the color from the color picker
     const colorPicker = document.getElementById('colorPicker');
     const color = hexToRgb(colorPicker.value);
+
+    // Insert the color for the new vertex
     layer.colors.splice(insertIndex, 0, color.r / 255, color.g / 255, color.b / 255);
 
     draw();
     return insertIndex / 3; // Return the index of the new vertex
 }
 
-function canvasToWebGLCoords(x, y) {
-    const rect = gl.canvas.getBoundingClientRect();
-    const canvasX = x - rect.left;
-    const canvasY = y - rect.top;
-    return {
-        x: (canvasX / gl.canvas.width) * 2 - 1,
-        y: -((canvasY / gl.canvas.height) * 2 - 1)
-    };
+function deleteVertex() {
+    if (selectedVertex !== -1 && currentLayerIndex !== -1) {
+        layers[currentLayerIndex].vertices.splice(selectedVertex * 3, 3);
+        layers[currentLayerIndex].colors.splice(selectedVertex * 3, 3);
+        selectedVertex = -1;
+        updateVertexEditor();
+        draw();
+    }
 }
 
+function updateVertexPosition(x, y) {
+    if (currentLayerIndex === -1 || selectedVertex === -1) return;
 
+    const { glX, glY } = getGLCoords(x, y);
+
+    const vertices = layers[currentLayerIndex].vertices;
+    vertices[selectedVertex * 3] = glX;
+    vertices[selectedVertex * 3 + 1] = glY;
+
+    updateVertexEditor();
+}
+
+function setVertexColor() {
+    if (currentLayerIndex === -1 || selectedVertex === -1) return;
+
+    const colorPicker = document.getElementById('colorPicker');
+    const color = hexToRgb(colorPicker.value);
+    const colors = layers[currentLayerIndex].colors;
+    const index = selectedVertex * 3;
+
+    colors[index] = color.r / 255;
+    colors[index + 1] = color.g / 255;
+    colors[index + 2] = color.b / 255;
+
+    updateVertexEditor();
+    draw();
+}
+
+function selectVertex(index) {
+    selectedVertex = index;
+    updateVertexEditor();
+    draw();
+}
 
 function getNearestVertex(x, y) {
     if (currentLayerIndex === -1) return -1;
 
-    const rect = gl.canvas.getBoundingClientRect();
-    const canvasX = x - rect.left;
-    const canvasY = y - rect.top;
-    const glX = (canvasX / gl.canvas.width) * 2 - 1;
-    const glY = -((canvasY / gl.canvas.height) * 2 - 1);
+    const { glX, glY } = getGLCoords(x, y);
 
     let minDist = Infinity;
     let nearestIndex = -1;
@@ -353,131 +358,32 @@ function getNearestVertex(x, y) {
             minDist = dist;
             nearestIndex = i / 3;
         }
-
     }
+
     if (minDist < SELECTION_SENSITIVITY) {
         selectVertex(nearestIndex);
         return nearestIndex;
     }
     return -1;
 }
-function setVertexColor(index) {
-    if (currentLayerIndex === -1) return;
 
-    const colorPicker = document.getElementById('colorPicker');
-    const color = hexToRgb(colorPicker.value);
-    const colors = layers[currentLayerIndex].colors;
-    colors[index * 3] = color.r / 255;
-    colors[index * 3 + 1] = color.g / 255;
-    colors[index * 3 + 2] = color.b / 255;
-    draw();
-}
+// Utility functions
+function getGLCoords(x, y) {
+    const rect = gl.canvas.getBoundingClientRect();
+    const canvasX = x - rect.left;
+    const canvasY = y - rect.top;
+    let glX = (canvasX / gl.canvas.width) * 2 - 1;
+    let glY = -((canvasY / gl.canvas.height) * 2 - 1);
 
-function exportShape() {
-    const modelName = document.getElementById('modelName').value.trim();
-    if (!modelName) {
-        alert('Please enter a model name');
-        return;
+    if (snapToGrid) {
+        glX = Math.round(glX / gridSize) * gridSize;
+        glY = Math.round(glY / gridSize) * gridSize;
     }
-
-    const className = 'Model2D_' + modelName.charAt(0).toUpperCase() + modelName.slice(1);
-    const fileName = `model2D_${modelName.toLowerCase()}.js`;
-
-    let shapesCode = layers.map((layer, index) => {
-        const verticesStr = JSON.stringify(layer.vertices);
-        const colorsStr = JSON.stringify(layer.colors);
-        const indicesStr = JSON.stringify(generateIndices(layer.vertices));
-        return `    this.addShape(
-            ${verticesStr},
-            ${colorsStr},
-            ${indicesStr},
-            this.gl.${layer.drawMode}
-        );`
-    }).join('\n\n');
-
-    const output = `class ${className} extends Model2D {
-    constructor(gl) {
-        super(gl);
-        this.initShape();
-    }
-
-    initShape() {
-${shapesCode}
-    }
-}`;
-
-    downloadFile(fileName, output);
-}
-
-function clearLayer() {
-    if (currentLayerIndex !== -1) {
-        layers[currentLayerIndex].vertices = [];
-        layers[currentLayerIndex].colors = [];
-        layers[currentLayerIndex].links = [];
-        draw();
-    }
-}
-
-function generateIndices(vertices) {
-    let indices = [];
-
-    if (vertices.length <= 9) { // 3 vertices or less
-        for (let i = 0; i < vertices.length / 3; i++) {
-            indices.push(i);
-        }
-    } else {
-        // For shapes with more than 3 vertices, we'll use a triangle fan approach
-        // This assumes the vertices are in a counter-clockwise order
-        for (let i = 1; i < vertices.length / 3 - 1; i++) {
-            indices.push(0, i, i + 1);
-        }
-    }
-
-    return indices;
-}
-function downloadFile(filename, text) {
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-
-    element.style.display = 'none';
-    document.body.appendChild(element);
-
-    element.click();
-
-    document.body.removeChild(element);
-}
-
-
-function clearCanvas() {
-    vertices = [];
-    colors = [];
-    links = [];
-    draw();
-}
-
-function deleteLayer() {
-    if (currentLayerIndex !== -1) {
-        layers.splice(currentLayerIndex, 1);
-        currentLayerIndex = -1;
-        updateLayerList();
-        draw();
-    }
-}
-
-function deleteVertex() {
-    if (selectedVertex !== -1 && currentLayerIndex !== -1) {
-        layers[currentLayerIndex].vertices.splice(selectedVertex * 3, 3);
-        layers[currentLayerIndex].colors.splice(selectedVertex * 3, 3);
-        selectedVertex = -1;
-        updateVertexEditor();
-        draw();
-    }
+    return { glX, glY };
 }
 
 function findInsertionPoint(layer, newX, newY) {
     if (layer.vertices.length < 6) {
-        // If there are fewer than 2 vertices, add to the end
         return layer.vertices.length;
     }
 
@@ -491,7 +397,6 @@ function findInsertionPoint(layer, newX, newY) {
         const x2 = layer.vertices[nextIndex];
         const y2 = layer.vertices[nextIndex + 1];
 
-        // Calculate distance from point to line segment
         const distance = distanceToLineSegment(newX, newY, x1, y1, x2, y2);
 
         if (distance < minDistance) {
@@ -503,186 +408,48 @@ function findInsertionPoint(layer, newX, newY) {
     return insertIndex;
 }
 
-function updateVertexPosition(x, y) {
-    if (currentLayerIndex === -1 || selectedVertex === -1) return;
 
-    const rect = gl.canvas.getBoundingClientRect();
-    const canvasX = x - rect.left;
-    const canvasY = y - rect.top;
-    let glX = (canvasX / gl.canvas.width) * 2 - 1;
-    let glY = -((canvasY / gl.canvas.height) * 2 - 1);
+function updateLayerList() {
+    const layerList = document.getElementById('layerList');
+    layerList.innerHTML = '';
+    layers.forEach((layer, index) => {
+        const layerContainer = document.createElement('div');
+        layerContainer.className = 'layerButton' + (index === currentLayerIndex ? ' selected' : '');
 
-    // Apply grid snapping if enabled
-    if (snapToGrid) {
-        glX = Math.round(glX / gridSize) * gridSize;
-        glY = Math.round(glY / gridSize) * gridSize;
-    }
+        const layerName = document.createElement('span');
+        layerName.textContent = layer.name;
+        layerName.onclick = () => selectLayer(index);
 
-    const vertices = layers[currentLayerIndex].vertices;
-    vertices[selectedVertex * 3] = glX;
-    vertices[selectedVertex * 3 + 1] = glY;
+        const copyButtons = document.createElement('div');
+        copyButtons.className = 'layerCopyButtons';
 
-    updateVertexEditor();
-}
+        const copyVerticesButton = createCopyButton(
+            'assets/vertex.png',
+            'Copy Vertices',
+            () => copyToClipboard(getVerticesString(index))
+        );
+        const copyColorsButton = createCopyButton(
+            'assets/colors.png',
+            'Copy Colors',
+            () => copyToClipboard(getColorsString(index))
+        );
+        const copyIndicesButton = createCopyButton(
+            'assets/indices.png',
+            'Copy Indices',
+            () => copyToClipboard(getIndicesString(index))
+        );
 
-function distanceToLineSegment(x, y, x1, y1, x2, y2) {
-    const A = x - x1;
-    const B = y - y1;
-    const C = x2 - x1;
-    const D = y2 - y1;
+        copyButtons.appendChild(copyVerticesButton);
+        copyButtons.appendChild(copyColorsButton);
+        copyButtons.appendChild(copyIndicesButton);
 
-    const dot = A * C + B * D;
-    const lenSq = C * C + D * D;
-    let param = -1;
-    if (lenSq !== 0) {
-        param = dot / lenSq;
-    }
-
-    let xx, yy;
-
-    if (param < 0) {
-        xx = x1;
-        yy = y1;
-    } else if (param > 1) {
-        xx = x2;
-        yy = y2;
-    } else {
-        xx = x1 + param * C;
-        yy = y1 + param * D;
-    }
-
-    const dx = x - xx;
-    const dy = y - yy;
-    return Math.sqrt(dx * dx + dy * dy);
-}
-
-function updateGridEnabled() {
-    snapToGrid = document.getElementById('gridEnabled').checked;
-    draw();
-}
-
-function updateGridSize() {
-    gridSize = parseFloat(document.getElementById('gridSize').value);
-    draw();
-}
-
-window.onload = function() {
-    initWebGL();
-
-    colorModLoc = gl.getUniformLocation(program, "colorModifier");
-    gl.uniform4f(colorModLoc, 1, 1, 1, 1); // Initialize to white
-
-    const canvas = document.getElementById('glCanvas');
-    const addLayerButton = document.getElementById('addLayer');
-    const setColorButton = document.getElementById('setColor');
-    const exportButton = document.getElementById('exportButton');
-    const clearLayerButton = document.getElementById('clearLayer');
-    const drawModeSelect = document.getElementById('drawMode');
-    const deleteLayerButton = document.getElementById('deleteLayer');
-    const deleteVertexButton = document.getElementById('deleteVertex');
-
-    const updateVertexX = document.getElementById('vertexX');
-    const updateVertexY = document.getElementById('vertexY');
-    const updateVertexR = document.getElementById('vertexR');
-    const updateVertexG = document.getElementById('vertexG');
-    const updateVertexB = document.getElementById('vertexB');
-
-    const gridEnabledCheckbox = document.getElementById('gridEnabled');
-    const gridSizeInput = document.getElementById('gridSize');
-
-    gridEnabledCheckbox.addEventListener('change', updateGridEnabled);
-    gridSizeInput.addEventListener('input', updateGridSize);
-
-    // Init the grid size html element
-    gridSizeInput.value = gridSize;
-
-
-    updateVertexX.addEventListener('input', updateVertexFromEditor);
-    updateVertexY.addEventListener('input', updateVertexFromEditor);
-    updateVertexR.addEventListener('input', updateVertexFromEditor);
-    updateVertexG.addEventListener('input', updateVertexFromEditor);
-    updateVertexB.addEventListener('input', updateVertexFromEditor);
-
-    deleteLayerButton.addEventListener('click', deleteLayer);
-    deleteVertexButton.addEventListener('click', deleteVertex);
-
-    setColorButton.addEventListener('click', function() { //TODO: Improve this
-    if (selectedVertex !== -1 && currentLayerIndex !== -1) {
-        setVertexColor(selectedVertex);
-        draw();
-    }
-});
-
-    addLayerButton.addEventListener('click', addLayer);
-
-    canvas.addEventListener('mousedown', function(e) {
-        if (currentLayerIndex === -1) return;
-
-        if (e.button === 0) { // Left click
-            const nearestVertex = getNearestVertex(e.clientX, e.clientY);
-            if (nearestVertex === -1) {
-                const newVertexIndex = addVertex(e.clientX, e.clientY);
-                if (newVertexIndex !== -1) {
-                    selectVertex(newVertexIndex);
-                    isDragging = true;
-                }
-            } else {
-                selectVertex(nearestVertex);
-                isDragging = true;
-            }
-            draw();
-        }
+        layerContainer.appendChild(layerName);
+        layerContainer.appendChild(copyButtons);
+        layerList.appendChild(layerContainer);
     });
 
-    canvas.addEventListener('mousemove', function(e) {
-        if (isDragging && selectedVertex !== -1 && currentLayerIndex !== -1) {
-            updateVertexPosition(e.clientX, e.clientY);
-            draw();
-        }
-    });
-
-    canvas.addEventListener('mouseup', function(e) {
-        if (e.button === 0) { // Left click release
-            isDragging = false;
-        }
-    });
-
-    setColorButton.addEventListener('click', function() {
-        if (currentLayerIndex !== -1) {
-            canvas.addEventListener('click', setColorListener);
-        }
-    });
-
-    exportButton.addEventListener('click', exportShape);
-
-    clearLayerButton.addEventListener('click', clearLayer);
-
-    drawModeSelect.addEventListener('change', function() {
-        if (currentLayerIndex !== -1) {
-            layers[currentLayerIndex].drawMode = this.value;
-            draw();
-        }
-    });
-
-    function setColorListener(e) {
-        if (currentLayerIndex !== -1) {
-            const index = getNearestVertex(e.clientX, e.clientY);
-            if (index !== -1) {
-                setVertexColor(index);
-            }
-            canvas.removeEventListener('click', setColorListener);
-        }
-    }
-
-    // Add an initial layer
-    addLayer();
-};
-
-
-function selectVertex(index) {
-    selectedVertex = index;
-    updateVertexEditor();
-    draw();
+    // Initialize tooltips for the new buttons
+    tippy('.copyButton'); // TODO: Temporarily initializing tooltips in here, it should be done in tooltips.js somehow.
 }
 
 function updateVertexEditor() {
@@ -718,4 +485,233 @@ function updateVertexFromEditor() {
     layer.colors[colorIndex + 2] = parseFloat(document.getElementById('vertexB').value);
 
     draw();
+}
+
+// Export functionality
+function exportShape() {
+    const modelName = document.getElementById('modelName').value.trim();
+    if (!modelName) {
+        alert('Please enter a model name');
+        return;
+    }
+
+    const className = 'Model2D_' + modelName.charAt(0).toUpperCase() + modelName.slice(1);
+    const fileName = `model2D_${modelName.toLowerCase()}.js`;
+
+    let shapesCode = layers.map((layer) => {
+        const verticesStr = JSON.stringify(layer.vertices);
+        const colorsStr = JSON.stringify(layer.colors);
+        const indicesStr = JSON.stringify(generateIndices(layer.vertices));
+        return `    this.addShape(
+            ${verticesStr},
+            ${colorsStr},
+            ${indicesStr},
+            this.gl.${layer.drawMode}
+        );`
+    }).join('\n\n');
+
+    const output = `class ${className} extends Model2D {
+    constructor(gl) {
+        super(gl);
+        this.initShape();
+    }
+
+    initShape() {
+${shapesCode}
+    }
+}`;
+
+    downloadFile(fileName, output);
+}
+
+function generateIndices(vertices) {
+    let indices = [];
+
+    if (vertices.length <= 9) {
+        for (let i = 0; i < vertices.length / 3; i++) {
+            indices.push(i);
+        }
+    } else {
+        for (let i = 1; i < vertices.length / 3 - 1; i++) {
+            indices.push(0, i, i + 1);
+        }
+    }
+
+    return indices;
+}
+
+
+function initializeColorPicker() {
+    const colorPicker = document.getElementById('colorPicker');
+    colorPicker.value = '#FFFFFF';  // Set to white
+}
+
+// Initialization
+window.onload = function() {
+    initWebGL();
+
+    const canvas = document.getElementById('glCanvas');
+    const addLayerButton = document.getElementById('addLayer');
+    const setColorButton = document.getElementById('setColor');
+    const exportButton = document.getElementById('exportButton');
+    const clearLayerButton = document.getElementById('clearLayer');
+    const drawModeSelect = document.getElementById('drawMode');
+    const deleteLayerButton = document.getElementById('deleteLayer');
+    const deleteVertexButton = document.getElementById('deleteVertex');
+    const gridEnabledCheckbox = document.getElementById('gridEnabled');
+    const gridSizeInput = document.getElementById('gridSize');
+    const backgroundColorInput = document.getElementById('canvasColor');
+    const downloadModel2DButton = document.getElementById('downloadModel2D');
+
+    gridSizeInput.value = gridSize;
+    backgroundColorInput.value = '#000000';
+
+    // Event listeners
+    canvas.addEventListener('mousedown', handleCanvasMouseDown);
+    canvas.addEventListener('mousemove', handleCanvasMouseMove);
+    canvas.addEventListener('mouseup', handleCanvasMouseUp);
+    addLayerButton.addEventListener('click', addLayer);
+    setColorButton.addEventListener('click', setVertexColor);
+    exportButton.addEventListener('click', exportShape);
+    clearLayerButton.addEventListener('click', clearLayer);
+    deleteLayerButton.addEventListener('click', deleteLayer);
+    deleteVertexButton.addEventListener('click', deleteVertex);
+    gridEnabledCheckbox.addEventListener('change', updateGridEnabled);
+    gridSizeInput.addEventListener('input', updateGridSize);
+    backgroundColorInput.addEventListener('input', updateBackgroundColor);
+    drawModeSelect.addEventListener('change', updateDrawMode);
+    downloadModel2DButton.addEventListener('click', downloadModel2D);
+
+    document.getElementById('vertexX').addEventListener('input', updateVertexFromEditor);
+    document.getElementById('vertexY').addEventListener('input', updateVertexFromEditor);
+    document.getElementById('vertexR').addEventListener('input', updateVertexFromEditor);
+    document.getElementById('vertexG').addEventListener('input', updateVertexFromEditor);
+    document.getElementById('vertexB').addEventListener('input', updateVertexFromEditor);
+
+    document.getElementById('copyAllLayers').addEventListener('click', copyAllLayerData);
+
+    initializeTooltips();
+    initializeColorPicker();
+
+    addLayer();
+};
+
+// Event handlers
+function handleCanvasMouseDown(e) {
+    if (currentLayerIndex === -1) return;
+
+    if (e.button === 0) { // Left click
+        const nearestVertex = getNearestVertex(e.clientX, e.clientY);
+        if (nearestVertex === -1) {
+            const newVertexIndex = addVertex(e.clientX, e.clientY);
+            if (newVertexIndex !== -1) {
+                selectVertex(newVertexIndex);
+                isDragging = true;
+            }
+        } else {
+            selectVertex(nearestVertex);
+            isDragging = true;
+        }
+        draw();
+    }
+}
+
+function handleCanvasMouseMove(e) {
+    if (isDragging && selectedVertex !== -1 && currentLayerIndex !== -1) {
+        updateVertexPosition(e.clientX, e.clientY);
+        draw();
+    }
+}
+
+function handleCanvasMouseUp(e) {
+    if (e.button === 0) { // Left click release
+        isDragging = false;
+    }
+}
+
+function updateGridEnabled() {
+    snapToGrid = document.getElementById('gridEnabled').checked;
+    draw();
+}
+
+function updateGridSize() {
+    gridSize = parseFloat(document.getElementById('gridSize').value);
+    draw();
+}
+
+function updateBackgroundColor() {
+    const color = hexToRgb(this.value);
+    backgroundColor = [color.r / 255, color.g / 255, color.b / 255];
+    draw();
+}
+
+function updateDrawMode() {
+    if (currentLayerIndex !== -1) {
+        layers[currentLayerIndex].drawMode = this.value;
+        draw();
+    }
+}
+
+function copyAllLayerData() {
+    const verticesStr = getVerticesString(currentLayerIndex);
+    const colorsStr = getColorsString(currentLayerIndex);
+    const indicesStr = getIndicesString(currentLayerIndex);
+
+    const allLayerData = `${verticesStr}\n\n${colorsStr}\n\n${indicesStr}`;
+    copyToClipboard(allLayerData);
+}
+
+// Helper functions
+function createCopyButton(iconSrc, tooltipContent, onClick) {
+    const button = document.createElement('button');
+    button.className = 'copyButton';
+
+    const icon = document.createElement('img');
+    icon.src = iconSrc;
+    icon.alt = tooltipContent;
+    button.appendChild(icon);
+
+    button.onclick = onClick;
+
+    // Add a data attribute for the tooltip content
+    button.setAttribute('data-tippy-content', tooltipContent);
+
+    return button;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        console.log('Copied to clipboard');
+    }, (err) => {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+function formatArray(arr, groupSize) {
+    return arr.reduce((result, value, index) => {
+        if (index % groupSize === 0) {
+            result += index === 0 ? '' : ',\n    ';
+        }
+        result += value.toFixed(4); //TODO: Allow for custom precision
+        if (index % groupSize !== groupSize - 1 && index !== arr.length - 1) {
+            result += ', ';
+        }
+        return result;
+    }, '');
+}
+
+function getVerticesString(layerIndex) {
+    const vertices = layers[layerIndex].vertices;
+    return `const vertices = [\n    ${formatArray(vertices, 3)}\n];`;
+}
+
+function getColorsString(layerIndex) {
+    const colors = layers[layerIndex].colors;
+    return `const colors = [\n    ${formatArray(colors, 3)}\n];`;
+}
+
+function getIndicesString(layerIndex) {
+    const vertices = layers[layerIndex].vertices;
+    const indices = generateIndices(vertices);
+    return `const indices = [${indices.join(', ')}];`;
 }
