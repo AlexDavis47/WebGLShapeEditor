@@ -27,13 +27,14 @@ function createProgram(gl, vertexShader, fragmentShader) {
 }
 
 function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255
+        } : null;
+    }
+
 
 
 function distanceToLineSegment(x, y, x1, y1, x2, y2) {
@@ -101,3 +102,31 @@ function downloadFile(filename, text) {
 
     document.body.removeChild(element);
 }
+
+function initWebGL(canvasID = 'glCanvas') {
+    const canvas = document.getElementById(canvasID);
+    const gl = canvas.getContext('webgl');
+
+    if (!gl) {
+        console.error('Unable to initialize WebGL. Your browser may not support it.');
+        return null;
+    }
+
+    return gl;
+}
+
+function getGLCoords(gl, x, y, z = 0) {
+    const rect = gl.canvas.getBoundingClientRect();
+    const canvasX = x - rect.left;
+    const canvasY = y - rect.top;
+    const canvasZ = z;
+
+    const canvasWidth = gl.canvas.width;
+    const canvasHeight = gl.canvas.height;
+
+    const xCoord = (canvasX / canvasWidth) * 2 - 1;
+    const yCoord = 1 - (canvasY / canvasHeight) * 2;
+
+    return [xCoord, yCoord, canvasZ];
+}
+

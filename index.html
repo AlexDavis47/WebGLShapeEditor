@@ -59,6 +59,10 @@
                                 <label for="vertexY">Y:</label>
                                 <input type="number" id="vertexY" step="0.01">
                             </div>
+                            <div class="control-row">
+                                <label for="vertexZ">Z:</label>
+                                <input type="number" id="vertexZ" step="0.01">
+                            </div>
                         </div>
                         <div id="vertexColors">
                             <div class="control-row">
@@ -107,6 +111,15 @@
     <script src="tooltips/tooltips.js"></script>
     <script src="downloadModel2D.js"></script>
     <script src="webgl-utils.js"></script>
-    <script src="shape-designer.js"></script>
+    <script src="shaders/abstract-shader.js"></script>
+    <script src="shaders/default-shader.js"></script>
+    <script src="abstract-shape-editor.js"></script>
+    <script src="shape-editor-2d.js"></script>
+    <script>
+        window.onload = function () {
+            const shapeEditor = new ShapeEditor2D();
+            shapeEditor.init();
+        }
+    </script>
 </body>
 </html>

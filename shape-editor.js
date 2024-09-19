@@ -1,4 +1,4 @@
-// Global variables
+﻿// Global variables
 let gl, program;
 let positionAttributeLocation, colorAttributeLocation, colorModLocation;
 let layers = [];
